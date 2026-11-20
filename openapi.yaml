@@ -1,0 +1,683 @@
+openapi: 3.0.3
+info:
+  title: Cybersecurity Incident Management API
+  version: "1.0.0"
+  description: |
+    REST API untuk mengelola insiden keamanan siber, aset IT, kerentanan, dan audit log
+    secara terpusat dalam sebuah organisasi.
+
+    **Domain:** Cybersecurity
+    **Mahasiswa:** Muhammad Ardita Hilmi | 23.83.0981 | 23TK01
+    **Mata Kuliah:** TK070 — Pemrograman Web Lanjut
+    **Universitas:** Amikom Yogyakarta
+  contact:
+    name: Muhammad Ardita Hilmi
+    email: admin@cybersec.id
+
+servers:
+  - url: http://127.0.0.1:5000
+    description: Local Development Server
+
+tags:
+  - name: Users
+    description: Manajemen pengguna sistem
+  - name: Assets
+    description: Manajemen aset IT organisasi
+  - name: Incidents
+    description: Pelaporan dan tracking insiden keamanan
+  - name: Vulnerabilities
+    description: Tracking kerentanan/CVE pada aset
+  - name: Audit Logs
+    description: Log aktivitas sistem (read-only, otomatis)
+
+paths:
+
+  # ─────────────────────────────────────────
+  # USERS
+  # ─────────────────────────────────────────
+  /api/users:
+    get:
+      tags: [Users]
+      summary: Get semua user
+      description: Ambil daftar user dengan filter role dan pagination
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [admin, analyst, viewer]
+          description: Filter berdasarkan role
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    username: admin_hilmi
+                    email: admin@cybersec.id
+                    role: admin
+                    is_active: true
+                    created_at: "2026-11-05T14:00:00"
+                total: 3
+                page: 1
+                per_page: 10
+
+    post:
+      tags: [Users]
+      summary: Buat user baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, email]
+              properties:
+                username:
+                  type: string
+                  example: analyst_baru
+                password:
+                  type: string
+                  minLength: 6
+                  example: pass123
+                email:
+                  type: string
+                  format: email
+                  example: analyst@cybersec.id
+                role:
+                  type: string
+                  enum: [admin, analyst, viewer]
+                  default: analyst
+      responses:
+        "201":
+          description: User berhasil dibuat
+          content:
+            application/json:
+              example:
+                status: success
+                message: User created
+                data:
+                  id: 4
+                  username: analyst_baru
+                  email: analyst@cybersec.id
+                  role: analyst
+                  is_active: true
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              example:
+                status: error
+                message: password is required
+        "409":
+          description: Username atau email sudah terdaftar
+          content:
+            application/json:
+              example:
+                status: error
+                message: Username already exists
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  id: 1
+                  username: admin_hilmi
+                  email: admin@cybersec.id
+                  role: admin
+        "404":
+          description: User tidak ditemukan
+          content:
+            application/json:
+              example:
+                status: error
+                message: User not found
+
+    put:
+      tags: [Users]
+      summary: Update user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:     { type: string }
+                role:      { type: string, enum: [admin, analyst, viewer] }
+                is_active: { type: boolean }
+                password:  { type: string, minLength: 6 }
+            example:
+              role: viewer
+              is_active: false
+      responses:
+        "200":
+          description: User diperbarui
+          content:
+            application/json:
+              example:
+                status: success
+                message: User updated
+                data: { id: 1, role: viewer }
+        "404": { description: User tidak ditemukan }
+
+    delete:
+      tags: [Users]
+      summary: Hapus user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: User dihapus
+          content:
+            application/json:
+              example:
+                status: success
+                message: User deleted
+        "404": { description: User tidak ditemukan }
+
+  # ─────────────────────────────────────────
+  # ASSETS
+  # ─────────────────────────────────────────
+  /api/assets:
+    get:
+      tags: [Assets]
+      summary: Get semua aset
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive, compromised, decommissioned] }
+        - in: query
+          name: asset_type
+          schema: { type: string, enum: [server, endpoint, network, app] }
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Cari nama aset (case-insensitive)
+        - in: query
+          name: sort_by
+          schema: { type: string, enum: [created_at, name], default: created_at }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    name: Web Server Prod
+                    ip_address: 192.168.1.10
+                    asset_type: server
+                    status: active
+                    owner_id: 1
+                total: 5
+                page: 1
+
+    post:
+      tags: [Assets]
+      summary: Daftarkan aset baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, asset_type, owner_id]
+              properties:
+                name:        { type: string }
+                ip_address:  { type: string }
+                asset_type:  { type: string, enum: [server, endpoint, network, app] }
+                status:      { type: string, default: active }
+                description: { type: string }
+                owner_id:    { type: integer }
+            example:
+              name: Firewall Utama
+              ip_address: 10.0.0.254
+              asset_type: network
+              status: active
+              description: Main perimeter firewall
+              owner_id: 1
+      responses:
+        "201":
+          description: Aset dibuat
+          content:
+            application/json:
+              example:
+                status: success
+                message: Asset created
+                data: { id: 6, name: Firewall Utama }
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              example:
+                status: error
+                message: owner_id is required
+
+  /api/assets/{id}:
+    get:
+      tags: [Assets]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Berhasil }
+        "404":
+          description: Tidak ditemukan
+          content:
+            application/json:
+              example: { status: error, message: Asset not found }
+    put:
+      tags: [Assets]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:        { type: string }
+                ip_address:  { type: string }
+                asset_type:  { type: string }
+                status:      { type: string }
+                description: { type: string }
+      responses:
+        "200": { description: Diperbarui }
+        "404": { description: Tidak ditemukan }
+    delete:
+      tags: [Assets]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Dihapus }
+        "404": { description: Tidak ditemukan }
+
+  # ─────────────────────────────────────────
+  # INCIDENTS
+  # ─────────────────────────────────────────
+  /api/incidents:
+    get:
+      tags: [Incidents]
+      summary: Get semua insiden (filter, search, sort, pagination)
+      parameters:
+        - in: query
+          name: severity
+          schema: { type: string, enum: [low, medium, high, critical] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [open, investigating, resolved, closed] }
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Cari kata kunci di judul insiden
+        - in: query
+          name: sort_by
+          schema: { type: string, enum: [created_at, severity], default: created_at }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 2
+                    title: Unauthorized SSH Access
+                    description: Brute force attack detected on web server
+                    severity: critical
+                    status: open
+                    reported_by: 1
+                    asset_id: 1
+                    created_at: "2026-11-05T14:25:52"
+                    updated_at: "2026-11-05T14:25:52"
+                total: 4
+                page: 1
+
+    post:
+      tags: [Incidents]
+      summary: Laporkan insiden baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, severity, reported_by]
+              properties:
+                title:       { type: string }
+                description: { type: string }
+                severity:    { type: string, enum: [low, medium, high, critical] }
+                status:      { type: string, enum: [open, investigating, resolved, closed], default: open }
+                reported_by: { type: integer }
+                asset_id:    { type: integer, nullable: true }
+            example:
+              title: Unauthorized SSH Access
+              description: Brute force attack detected on web server
+              severity: critical
+              reported_by: 1
+              asset_id: 1
+      responses:
+        "201":
+          description: Insiden dilaporkan
+          content:
+            application/json:
+              example:
+                status: success
+                message: Incident created
+                data:
+                  id: 5
+                  title: Unauthorized SSH Access
+                  severity: critical
+                  status: open
+                  reported_by: 1
+                  asset_id: 1
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              examples:
+                missing_field:
+                  value: { status: error, message: severity is required }
+                invalid_enum:
+                  value: { status: error, message: "severity must be one of ['low', 'medium', 'high', 'critical']" }
+
+  /api/incidents/{id}:
+    get:
+      tags: [Incidents]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Berhasil }
+        "404":
+          description: Tidak ditemukan
+          content:
+            application/json:
+              example: { status: error, message: Incident not found }
+    put:
+      tags: [Incidents]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:       { type: string }
+                description: { type: string }
+                severity:    { type: string, enum: [low, medium, high, critical] }
+                status:      { type: string, enum: [open, investigating, resolved, closed] }
+                asset_id:    { type: integer }
+            example:
+              status: resolved
+              severity: medium
+      responses:
+        "200": { description: Diperbarui }
+        "404": { description: Tidak ditemukan }
+    delete:
+      tags: [Incidents]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Dihapus }
+        "404": { description: Tidak ditemukan }
+
+  # ─────────────────────────────────────────
+  # VULNERABILITIES
+  # ─────────────────────────────────────────
+  /api/vulnerabilities:
+    get:
+      tags: [Vulnerabilities]
+      summary: Get semua vulnerability (filter, search CVE, sort, pagination)
+      parameters:
+        - in: query
+          name: severity
+          schema: { type: string, enum: [low, medium, high, critical] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [open, mitigated, patched] }
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Cari berdasarkan CVE ID
+        - in: query
+          name: sort_by
+          schema: { type: string, enum: [created_at, severity], default: created_at }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    title: Log4Shell RCE
+                    cve_id: CVE-2021-44228
+                    severity: critical
+                    status: open
+                    asset_id: 1
+                    discovered_by: 2
+                total: 4
+                page: 1
+
+    post:
+      tags: [Vulnerabilities]
+      summary: Catat vulnerability baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, severity, asset_id, discovered_by]
+              properties:
+                title:         { type: string }
+                cve_id:        { type: string, nullable: true }
+                severity:      { type: string, enum: [low, medium, high, critical] }
+                status:        { type: string, enum: [open, mitigated, patched], default: open }
+                description:   { type: string }
+                asset_id:      { type: integer }
+                discovered_by: { type: integer }
+            example:
+              title: SQL Injection di Login Portal
+              cve_id: CVE-2024-5678
+              severity: high
+              asset_id: 5
+              discovered_by: 2
+              description: SQLi pada form login HR Portal
+      responses:
+        "201":
+          description: Vulnerability dicatat
+          content:
+            application/json:
+              example:
+                status: success
+                message: Vulnerability created
+                data:
+                  id: 5
+                  title: SQL Injection di Login Portal
+                  cve_id: CVE-2024-5678
+                  severity: high
+        "400":
+          description: Validasi gagal
+          content:
+            application/json:
+              example: { status: error, message: asset_id is required }
+
+  /api/vulnerabilities/{id}:
+    get:
+      tags: [Vulnerabilities]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Berhasil }
+        "404":
+          description: Tidak ditemukan
+          content:
+            application/json:
+              example: { status: error, message: Vulnerability not found }
+    put:
+      tags: [Vulnerabilities]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:       { type: string }
+                cve_id:      { type: string }
+                severity:    { type: string, enum: [low, medium, high, critical] }
+                status:      { type: string, enum: [open, mitigated, patched] }
+                description: { type: string }
+            example:
+              status: patched
+      responses:
+        "200": { description: Diperbarui }
+        "404": { description: Tidak ditemukan }
+    delete:
+      tags: [Vulnerabilities]
+      parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Dihapus }
+        "404": { description: Tidak ditemukan }
+
+  # ─────────────────────────────────────────
+  # AUDIT LOGS
+  # ─────────────────────────────────────────
+  /api/audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: Get semua audit log (read-only, auto-generated)
+      description: |
+        Log ini otomatis tercatat setiap ada CREATE, UPDATE, atau DELETE
+        pada entitas incidents, vulnerabilities, assets, dan users.
+        Endpoint ini hanya untuk membaca.
+      parameters:
+        - in: query
+          name: entity_type
+          schema: { type: string, enum: [user, asset, incident, vulnerability] }
+        - in: query
+          name: action
+          schema: { type: string, enum: [CREATE, UPDATE, DELETE] }
+        - in: query
+          name: performed_by
+          schema: { type: integer }
+          description: Filter berdasarkan user ID yang melakukan aksi
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  - id: 1
+                    action: CREATE
+                    entity_type: incident
+                    entity_id: 2
+                    description: "Incident 'Unauthorized SSH Access' reported"
+                    performed_by: 1
+                    timestamp: "2026-11-05T14:25:52"
+                total: 10
+                page: 1
+
+  /api/audit-logs/{id}:
+    get:
+      tags: [Audit Logs]
+      summary: Get satu audit log by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              example:
+                status: success
+                data:
+                  id: 1
+                  action: CREATE
+                  entity_type: incident
+                  entity_id: 2
+                  description: "Incident 'Unauthorized SSH Access' reported"
+                  performed_by: 1
+                  timestamp: "2026-11-05T14:25:52"
+        "404":
+          description: Log tidak ditemukan
+          content:
+            application/json:
+              example: { status: error, message: Audit log not found }
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: Field is required
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          type: object
