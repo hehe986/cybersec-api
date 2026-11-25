@@ -11,10 +11,11 @@ class User(db.Model):
     role       = db.Column(db.String(50),  nullable=False, default='analyst')
     is_active  = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    incidents       = db.relationship('Incident',      backref='reporter',   lazy=True, foreign_keys='Incident.reported_by')
-    assets          = db.relationship('Asset',         backref='owner',      lazy=True, foreign_keys='Asset.owner_id')
-    vulnerabilities = db.relationship('Vulnerability', backref='discoverer', lazy=True, foreign_keys='Vulnerability.discovered_by')
-    audit_logs      = db.relationship('AuditLog',      backref='actor',      lazy=True, foreign_keys='AuditLog.performed_by')
+
+    incidents       = db.relationship('Incident',      backref='reporter',   lazy=True, foreign_keys='Incident.reported_by',      cascade='all, delete-orphan')
+    assets          = db.relationship('Asset',         backref='owner',      lazy=True, foreign_keys='Asset.owner_id',            cascade='all, delete-orphan')
+    vulnerabilities = db.relationship('Vulnerability', backref='discoverer', lazy=True, foreign_keys='Vulnerability.discovered_by', cascade='all, delete-orphan')
+    audit_logs      = db.relationship('AuditLog',      backref='actor',      lazy=True, foreign_keys='AuditLog.performed_by',     cascade='all, delete-orphan')
 
     def to_dict(self):
         return {'id': self.id, 'username': self.username, 'email': self.email,
