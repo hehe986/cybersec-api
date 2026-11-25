@@ -1,5 +1,4 @@
 flask==3.0.3
 flask-sqlalchemy==3.1.1
-pytest==8.3.2
-gunicorn 
 psycopg2-binary
+pytest==8.3.2
