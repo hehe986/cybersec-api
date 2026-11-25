@@ -43,7 +43,7 @@ def create_user():
         return jsonify({'status': 'error', 'message': 'Email already exists'}), 409
     user = User(
         username=data['username'],
-        password=hash_password(data['password']),   # hashed
+        password=hash_password(data['password']),
         email=data['email'],
         role=data.get('role', 'analyst')
     )
@@ -71,7 +71,12 @@ def delete_user(user_id):
     user = User.query.get(user_id)
     if not user:
         return jsonify({'status': 'error', 'message': 'User not found'}), 404
-    _log('DELETE', user.id, f"User '{user.username}' deleted", user.id)
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({'status': 'success', 'message': 'User deleted'}), 200
+    try:
+        AuditLog.query.filter_by(performed_by=user_id).delete()
+        db.session.flush()
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'User deleted'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
