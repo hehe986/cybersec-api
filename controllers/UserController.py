@@ -2,6 +2,9 @@
 from flask import jsonify, request
 from models.UserModel import User
 from models.AuditLogModel import AuditLog
+from models.AssetModel import Asset
+from models.IncidentModel import Incident
+from models.VulnerabilityModel import Vulnerability
 from config import db, hash_password
 
 def _log(action, entity_id, desc, performed_by):
@@ -73,6 +76,9 @@ def delete_user(user_id):
         return jsonify({'status': 'error', 'message': 'User not found'}), 404
     try:
         AuditLog.query.filter_by(performed_by=user_id).delete()
+        Vulnerability.query.filter_by(discovered_by=user_id).delete()
+        Incident.query.filter_by(reported_by=user_id).delete()
+        Asset.query.filter_by(owner_id=user_id).delete()
         db.session.flush()
         db.session.delete(user)
         db.session.commit()
